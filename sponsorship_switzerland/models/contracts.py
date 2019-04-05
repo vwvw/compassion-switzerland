@@ -403,14 +403,14 @@ class RecurringContracts(models.Model):
             ('credit', '>', 0),
             ('reconciled', '=', False)
         ])
-        number_to_reconcile = int(
-            sum(move_lines.mapped('credit') or [0])) / int(self.total_amount)
-        if number_to_reconcile:
+        total_credit = sum(move_lines.mapped('credit') or [0])
+        if total_credit > self.total_amount:
             self.button_generate_invoices()
             invoices = self.invoice_line_ids.mapped('invoice_id').sorted(
                 'date_invoice')
-            number = min(len(invoices), number_to_reconcile)
-            invoices = invoices[:number]
+            number_possible_to_reconcile = min(
+                len(invoices), int(total_credit) / int(self.total_amount))
+            invoices = invoices[:number_possible_to_reconcile]
             delay = datetime.now() + relativedelta(seconds=15)
             if invoices:
                 invoices.with_delay(eta=delay).group_or_split_reconcile()
